@@ -1,0 +1,487 @@
+import numpy as np#
+import matplotlib.pyplot as plt#
+#
+rng = np.random.default_rng(2026)#
+#
+# (b): One sample#
+x = rng.normal(size=500)#
+y = 1 + x + x**2#
+#
+beta_hat = np.sum((x - x.mean()) * (y - y.mean())) / \#
+           np.sum((x - x.mean())**2)#
+alpha_hat = y.mean() - beta_hat * x.mean()#
+residuals = y - alpha_hat - beta_hat * x#
+#
+print("Intercept:", alpha_hat, "Slope:", beta_hat)#
+#
+# (d): Monte Carlo sampling standard deviations#
+ns = np.array([100, 500, 1000, 2000, 5000, 8000, 10000])#
+B = 10000#
+empirical_se = []#
+#
+for n in ns:#
+    estimates = []#
+#
+    # Process 100 replications at a time to limit memory use.#
+    for start in range(0, B, 100):#
+        X = rng.normal(size=(100, n))#
+        Y = 1 + X + X**2#
+#
+        xbar = X.mean(axis=1)#
+        ybar = Y.mean(axis=1)#
+        Xc = X - xbar[:, None]#
+#
+        bhat = np.sum(Xc * (Y - ybar[:, None]), axis=1) / \#
+               np.sum(Xc**2, axis=1)#
+        ahat = ybar - bhat * xbar#
+#
+        estimates.append(np.column_stack([ahat, bhat]))#
+#
+    estimates = np.vstack(estimates)#
+    empirical_se.append(estimates.std(axis=0, ddof=1))#
+#
+empirical_se = np.array(empirical_se)#
+theoretical_se = np.sqrt(np.array([2, 10]) / ns[:, None])#
+#
+print("n, empirical intercept SE, theoretical intercept SE,",#
+      "empirical slope SE, theoretical slope SE")#
+for i, n in enumerate(ns):#
+    print(n, empirical_se[i, 0], theoretical_se[i, 0],#
+          empirical_se[i, 1], theoretical_se[i, 1])#
+#
+# Plot all results#
+fig, axes = plt.subplots(#
+    1, 3, figsize=(15, 4.6), layout="constrained"#
+)#
+#
+grid = np.linspace(x.min(), x.max(), 400)#
+axes[0].scatter(x, residuals, s=13, alpha=0.6,#
+                label="OLS residuals")#
+axes[0].plot(grid, grid**2 - 1, color="darkorange",#
+             lw=2, label="Population residual: x² − 1")#
+axes[0].set(xlabel="X", ylabel="Residual",#
+            title="(b) One sample, n = 500")#
+axes[0].legend(fontsize=8)#
+#
+n_grid = np.linspace(100, 10000, 500)#
+#
+for j, (variance, name) in enumerate([(2, "Intercept"), (10, "Slope")]):#
+    ax = axes[j + 1]#
+    ax.plot(n_grid, np.sqrt(variance / n_grid),#
+            color="darkorange", label="Asymptotic theory")#
+    ax.scatter(ns, empirical_se[:, j], s=35,#
+               label="Simulation SD", zorder=3)#
+    ax.set(xlabel="Sample size n", ylabel="Standard error",#
+           title=f"(d) {name}: 10,000 replications")#
+    ax.legend(fontsize=8)#
+    ax.grid(alpha=0.2)#
+#
+plt.savefig("ols_simulation.png", dpi=160)#
+plt.show()
+set.seed(2026)#
+#
+# Part (b): Simulate data and fit OLS#
+a <- b <- c <- 1#
+n <- 500#
+#
+X <- rnorm(n)#
+Y <- a + b * X + c * X^2#
+#
+fit <- lm(Y ~ X)#
+coef(fit)#
+#
+# Show three plots side by side#
+par(mfrow = c(1, 3))#
+#
+plot(#
+  X, residuals(fit),#
+  pch = 16, col = adjustcolor("steelblue", alpha.f = 0.5),#
+  xlab = "X", ylab = "Residual",#
+  main = "Residuals: n = 500"#
+)#
+#
+# Overlay population residual epsilon = c(X^2 - 1)#
+x_grid <- seq(min(X), max(X), length.out = 500)#
+lines(x_grid, c * (x_grid^2 - 1), col = "red", lwd = 2)#
+#
+legend(#
+  "topleft",#
+  legend = c("OLS residuals", "Population residual"),#
+  col = c("steelblue", "red"),#
+  pch = c(16, NA), lty = c(NA, 1),#
+  bty = "n", cex = 0.8#
+)#
+# Part (d): Repeated simulations#
+n_values <- c(100, 500, 1000, 2000, 5000, 8000, 10000)#
+B <- 10000#
+#
+results <- data.frame(#
+  n = n_values,#
+  SE_alpha_sim = NA_real_,#
+  SE_alpha_theory = abs(c) * sqrt(2 / n_values),#
+  SE_beta_sim = NA_real_,#
+  SE_beta_theory = abs(c) * sqrt(10 / n_values)#
+)#
+#
+for (j in seq_along(n_values)) {#
+  n <- n_values[j]#
+#
+  estimates <- replicate(B, {#
+    x <- rnorm(n)#
+    y <- a + b * x + c * x^2#
+#
+    # Explicit OLS formulas, equivalent to coef(lm(y ~ x))#
+    beta_hat <- sum((x - mean(x)) * (y - mean(y))) /#
+                sum((x - mean(x))^2)#
+    alpha_hat <- mean(y) - beta_hat * mean(x)#
+#
+    c(alpha_hat, beta_hat)#
+  })#
+#
+  # Sampling standard deviations across replications#
+  results$SE_alpha_sim[j] <- sd(estimates[1, ])#
+  results$SE_beta_sim[j] <- sd(estimates[2, ])#
+}#
+#
+print(results, digits = 5, row.names = FALSE)#
+# Plot simulated SEs and theoretical curves#
+n_grid <- seq(min(n_values), max(n_values), length.out = 1000)#
+#
+plot(#
+  results$n, results$SE_alpha_sim,#
+  pch = 16, col = "steelblue",#
+  ylim = range(results$SE_alpha_sim, results$SE_alpha_theory),#
+  xlab = "Sample size n", ylab = "Standard error",#
+  main = "Intercept"#
+)#
+lines(n_grid, abs(c) * sqrt(2 / n_grid), col = "red", lwd = 2)#
+#
+legend(#
+  "topright",#
+  legend = c("Simulation SD", "Asymptotic theory"),#
+  col = c("steelblue", "red"),#
+  pch = c(16, NA), lty = c(NA, 1),#
+  bty = "n", cex = 0.8#
+)#
+#
+plot(#
+  results$n, results$SE_beta_sim,#
+  pch = 16, col = "steelblue",#
+  ylim = range(results$SE_beta_sim, results$SE_beta_theory),#
+  xlab = "Sample size n", ylab = "Standard error",#
+  main = "Slope"#
+)#
+lines(n_grid, abs(c) * sqrt(10 / n_grid), col = "red", lwd = 2)#
+#
+legend(#
+  "topright",#
+  legend = c("Simulation SD", "Asymptotic theory"),#
+  col = c("steelblue", "red"),#
+  pch = c(16, NA), lty = c(NA, 1),#
+  bty = "n", cex = 0.8#
+)#
+#
+par(mfrow = c(1, 1))
+# Run once if needed:#
+# install.packages(c("faraway", "lmtest", "car"))#
+#
+library(faraway)#
+data(sat)#
+#
+fit <- lm(total ~ expend + salary + ratio + takers, data = sat)#
+summary(fit)#
+#
+n <- nobs(fit)#
+p <- fit$rank                  # Includes the intercept#
+states <- rownames(sat)#
+#
+# (a) Linearity: component-plus-residual plots#
+# Compare the smooth curve with the straight fitted line.#
+car::crPlots(fit)#
+#
+# Check a possible quadratic relationship with SAT participation.#
+fit_quad <- update(fit, . ~ . + I(takers^2))#
+anova(fit, fit_quad)#
+summary(fit_quad)#
+# (b) Constant variance#
+# Look for a funnel shape or a systematic change in residual spread.#
+plot(fit, which = 1)          # Residuals versus fitted values#
+plot(fit, which = 3)          # Scale-location plot#
+lmtest::bptest(fit)#
+# (c) Normality#
+# Look for departures from the reference line, particularly in the tails.#
+plot(fit, which = 2)          # Normal Q-Q plot#
+shapiro.test(residuals(fit))#
+# (d) Large leverage points#
+h <- hatvalues(fit)#
+leverage_cutoff <- 2 * p / n#
+high_leverage <- which(h > leverage_cutoff)#
+#
+plot(#
+  h, type = "h", ylim = c(0, max(h) * 1.15),#
+  xlab = "Observation", ylab = "Leverage",#
+  main = "Leverage"#
+)#
+abline(h = leverage_cutoff, col = "red", lty = 2)#
+text(#
+  high_leverage, h[high_leverage],#
+  labels = states[high_leverage], pos = 3, cex = 0.7#
+)#
+#
+leverage_table <- data.frame(#
+  State = states,#
+  Leverage = h,#
+  High_leverage = h > leverage_cutoff#
+)#
+leverage_table[order(-leverage_table$Leverage), ][1:10, ]#
+# (e) Outliers: externally studentized residuals#
+stud <- rstudent(fit)#
+df_deleted <- n - p - 1#
+#
+# Individual two-sided p-values and Bonferroni adjustment across n states.#
+p_raw <- 2 * pt(-abs(stud), df = df_deleted)#
+p_bonf <- p.adjust(p_raw, method = "bonferroni")#
+bonf_cutoff <- qt(1 - 0.05 / (2 * n), df = df_deleted)#
+#
+plot(#
+  fitted(fit), stud, pch = 19,#
+  ylim = range(c(stud, -bonf_cutoff, bonf_cutoff)) * 1.1,#
+  xlab = "Fitted total SAT score",#
+  ylab = "Externally studentized residual",#
+  main = "Outlier diagnostics"#
+)#
+abline(h = 0, col = "gray")#
+abline(h = c(-2, 2), col = "orange", lty = 2)#
+abline(h = c(-bonf_cutoff, bonf_cutoff), col = "red", lty = 3)#
+#
+flag <- which(abs(stud) > 2)#
+text(#
+  fitted(fit)[flag], stud[flag],#
+  labels = states[flag], pos = 3, cex = 0.7#
+)#
+#
+outlier_table <- data.frame(#
+  State = states,#
+  Studentized_residual = stud,#
+  P_value = p_raw,#
+  Bonferroni_P = p_bonf#
+)#
+outlier_table[order(-abs(outlier_table$Studentized_residual)), ][1:10, ]#
+# Additional checks to guide model improvements#
+#
+# Collinearity can make individual coefficient estimates unstable.#
+car::vif(fit)#
+#
+# Distinguish outliers and high leverage from actual influence.#
+cook <- cooks.distance(fit)#
+influence_table <- data.frame(#
+  State = states,#
+  Leverage = h,#
+  Studentized_residual = stud,#
+  Cooks_distance = cook#
+)#
+influence_table[order(-influence_table$Cooks_distance), ][1:10, ]#
+#
+# Sensitivity analysis: omit the most influential state temporarily.#
+# Do not remove observations permanently without a substantive reason.#
+most_influential <- which.max(cook)#
+fit_sensitivity <- lm(#
+  total ~ expend + salary + ratio + takers,#
+  data = sat[-most_influential, ]#
+)#
+states[most_influential]#
+cbind(#
+  Full_data = coef(fit),#
+  Without_most_influential = coef(fit_sensitivity)#
+)#
+#
+# Recheck diagnostics if the quadratic model is adopted.#
+par(mfrow = c(1, 3))#
+plot(fit_quad, which = 1)#
+plot(fit_quad, which = 3)#
+plot(fit_quad, which = 2)#
+par(mfrow = c(1, 1))#
+#
+lmtest::bptest(fit_quad)#
+shapiro.test(residuals(fit_quad))
+sat <- read.csv(file.choose())#
+#
+# Check that the data loaded correctly#
+head(sat)#
+dim(sat)#
+names(sat)#
+#
+fit <- lm(total ~ expend + salary + ratio + takers, data = sat)#
+summary(fit)#
+#
+n <- nobs(fit)#
+p <- fit$rank                  # Includes the intercept#
+states <- rownames(sat)#
+#
+# (a) Linearity: component-plus-residual plots#
+# Compare the smooth curve with the straight fitted line.#
+car::crPlots(fit)#
+#
+# Check a possible quadratic relationship with SAT participation.#
+fit_quad <- update(fit, . ~ . + I(takers^2))#
+anova(fit, fit_quad)#
+summary(fit_quad)#
+# (b) Constant variance#
+# Look for a funnel shape or a systematic change in residual spread.#
+plot(fit, which = 1)          # Residuals versus fitted values#
+plot(fit, which = 3)          # Scale-location plot#
+lmtest::bptest(fit)#
+# (c) Normality#
+# Look for departures from the reference line, particularly in the tails.#
+plot(fit, which = 2)          # Normal Q-Q plot#
+shapiro.test(residuals(fit))#
+# (d) Large leverage points#
+h <- hatvalues(fit)#
+leverage_cutoff <- 2 * p / n#
+high_leverage <- which(h > leverage_cutoff)#
+#
+plot(#
+  h, type = "h", ylim = c(0, max(h) * 1.15),#
+  xlab = "Observation", ylab = "Leverage",#
+  main = "Leverage"#
+)#
+abline(h = leverage_cutoff, col = "red", lty = 2)#
+text(#
+  high_leverage, h[high_leverage],#
+  labels = states[high_leverage], pos = 3, cex = 0.7#
+)#
+#
+leverage_table <- data.frame(#
+  State = states,#
+  Leverage = h,#
+  High_leverage = h > leverage_cutoff#
+)#
+leverage_table[order(-leverage_table$Leverage), ][1:10, ]#
+# (e) Outliers: externally studentized residuals#
+stud <- rstudent(fit)#
+df_deleted <- n - p - 1#
+#
+# Individual two-sided p-values and Bonferroni adjustment across n states.#
+p_raw <- 2 * pt(-abs(stud), df = df_deleted)#
+p_bonf <- p.adjust(p_raw, method = "bonferroni")#
+bonf_cutoff <- qt(1 - 0.05 / (2 * n), df = df_deleted)#
+#
+plot(#
+  fitted(fit), stud, pch = 19,#
+  ylim = range(c(stud, -bonf_cutoff, bonf_cutoff)) * 1.1,#
+  xlab = "Fitted total SAT score",#
+  ylab = "Externally studentized residual",#
+  main = "Outlier diagnostics"#
+)#
+abline(h = 0, col = "gray")#
+abline(h = c(-2, 2), col = "orange", lty = 2)#
+abline(h = c(-bonf_cutoff, bonf_cutoff), col = "red", lty = 3)#
+#
+flag <- which(abs(stud) > 2)#
+text(#
+  fitted(fit)[flag], stud[flag],#
+  labels = states[flag], pos = 3, cex = 0.7#
+)#
+#
+outlier_table <- data.frame(#
+  State = states,#
+  Studentized_residual = stud,#
+  P_value = p_raw,#
+  Bonferroni_P = p_bonf#
+)#
+outlier_table[order(-abs(outlier_table$Studentized_residual)), ][1:10, ]#
+# Additional checks to guide model improvements#
+#
+# Collinearity can make individual coefficient estimates unstable.#
+car::vif(fit)#
+#
+# Distinguish outliers and high leverage from actual influence.#
+cook <- cooks.distance(fit)#
+influence_table <- data.frame(#
+  State = states,#
+  Leverage = h,#
+  Studentized_residual = stud,#
+  Cooks_distance = cook#
+)#
+influence_table[order(-influence_table$Cooks_distance), ][1:10, ]#
+#
+# Sensitivity analysis: omit the most influential state temporarily.#
+# Do not remove observations permanently without a substantive reason.#
+most_influential <- which.max(cook)#
+fit_sensitivity <- lm(#
+  total ~ expend + salary + ratio + takers,#
+  data = sat[-most_influential, ]#
+)#
+states[most_influential]#
+cbind(#
+  Full_data = coef(fit),#
+  Without_most_influential = coef(fit_sensitivity)#
+)#
+#
+# Recheck diagnostics if the quadratic model is adopted.#
+par(mfrow = c(1, 3))#
+plot(fit_quad, which = 1)#
+plot(fit_quad, which = 3)#
+plot(fit_quad, which = 2)#
+par(mfrow = c(1, 1))#
+#
+lmtest::bptest(fit_quad)#
+shapiro.test(residuals(fit_quad))
+setwd("~/Desktop/Data506 HW4")#
+#
+# Extract R code from the Quarto document into a separate script.#
+knitr::purl("New Zealand.qmd", output = "New Zealand_extracted.R")#
+#
+# Execute the extracted code.#
+source("New Zealand_extracted.R", echo = TRUE)
+install.packages("tidyverse", repos = "https://cloud.r-project.org")
+setwd("~/Desktop/Data506 HW4")#
+#
+# Extract R code from the Quarto document into a separate script.#
+knitr::purl("New Zealand.qmd", output = "New Zealand_extracted.R")#
+#
+# Execute the extracted code.#
+source("New Zealand_extracted.R", echo = TRUE)
+# Install once if needed.#
+install.packages("quarto", repos = "https://cloud.r-project.org")#
+#
+# Assuming your folder is on the Desktop:#
+setwd("~/Desktop/Data506 HW4")#
+#
+# Render the Quarto document to HTML.#
+quarto::quarto_render("New Zealand.qmd", output_format = "html")
+# Select Tennis.qmd.#
+qmd_file <- file.choose()#
+#
+# Set the working directory to its folder.#
+setwd(dirname(qmd_file))#
+#
+# Run the document and generate the HTML file.#
+quarto::quarto_render(basename(qmd_file), output_format = "html")
+# Select Tennis.qmd.#
+qmd_file <- file.choose()#
+#
+# Set the working directory to its folder.#
+setwd(dirname(qmd_file))#
+#
+# Run the document and generate the HTML file.#
+quarto::quarto_render(basename(qmd_file), output_format = "html")
+download.file(#
+    paste0(#
+      "https://raw.githubusercontent.com/nytimes/",#
+      "covid-19-data/refs/heads/master/",#
+      "rolling-averages/us-states.csv"#
+    ),#
+    destfile = "us-states.csv",#
+    mode = "wb"
+download.file(#
+  "https://raw.githubusercontent.com/nytimes/covid-19-data/refs/heads/master/rolling-averages/us-states.csv",#
+  destfile = "~/Downloads/us-states.csv",#
+  mode = "wb"#
+)
+download.file(#
+  "https://raw.githubusercontent.com/nytimes/covid-19-data/refs/heads/master/rolling-averages/us-states.csv",#
+  destfile = "~/Downloads/us-states.csv",#
+  mode = "wb"#
+)
+install.packages("slider")
